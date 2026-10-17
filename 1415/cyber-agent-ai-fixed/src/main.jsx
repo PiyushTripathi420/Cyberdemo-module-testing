@@ -1,0 +1,93 @@
+import React, {Suspense, useEffect, useMemo, useRef, useState} from 'react';
+import {Canvas, useFrame} from '@react-three/fiber';
+import {Bounds, ContactShadows, OrbitControls, useFBX} from '@react-three/drei';
+import * as THREE from 'three';
+import {createRoot} from 'react-dom/client';
+import {ShieldCheck, CheckCircle2, Code2, Terminal as TerminalIcon, FolderOpen, Play, FileUp, Send, Volume2, VolumeX, Mic, ChevronDown, GitBranch, CircleDot, FileCode2, Activity, Wifi, Settings, Search, PanelLeft, X, Paperclip, Download, RefreshCw} from 'lucide-react';
+import robot from './assets/ai-robot-reference.jpg';
+import './styles.css';
+
+function FBXAvatar({ speaking }) {
+ const source = useFBX('/models/cyber-agent.fbx');
+ const model = useMemo(() => source.clone(true), [source]);
+ const morphMeshes = useRef([]);
+ const start = useRef(0);
+ const baseY = useRef(0);
+ useEffect(() => {
+   const box = new THREE.Box3().setFromObject(model);
+   const size = box.getSize(new THREE.Vector3());
+   const center = box.getCenter(new THREE.Vector3());
+   const maxDim = Math.max(size.x, size.y, size.z) || 1;
+   const scale = 2.25 / maxDim;
+   model.scale.setScalar(scale);
+   model.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
+   baseY.current = model.position.y;
+   morphMeshes.current = [];
+   model.traverse((obj) => {
+     if (obj.isMesh) {
+       obj.castShadow = true; obj.receiveShadow = true;
+       if (obj.morphTargetInfluences && obj.morphTargetDictionary) {
+         const names = Object.keys(obj.morphTargetDictionary);
+         const mouth = names.filter(n => /mouth.?open|jaw.?open|viseme.?aa|viseme.?ah|open.?mouth/i.test(n));
+         if (mouth.length) morphMeshes.current.push({obj, indices: mouth.map(n => obj.morphTargetDictionary[n])});
+       }
+     }
+   });
+ }, [model]);
+ useFrame((state, delta) => {
+   start.current += delta;
+   model.rotation.y = Math.sin(start.current * 0.28) * 0.035;
+   model.position.y = baseY.current + Math.sin(start.current * 1.2) * 0.008;
+   const amount = speaking ? 0.18 + Math.abs(Math.sin(start.current * 13)) * 0.62 : 0;
+   morphMeshes.current.forEach(({obj, indices}) => indices.forEach(i => { obj.morphTargetInfluences[i] = THREE.MathUtils.damp(obj.morphTargetInfluences[i] || 0, amount, 12, delta); }));
+ });
+ return <primitive object={model} />;
+}
+
+class AvatarErrorBoundary extends React.Component {
+ constructor(props) { super(props); this.state = {failed:false}; }
+ static getDerivedStateFromError() { return {failed:true}; }
+ componentDidCatch() {}
+ render() { return this.state.failed ? this.props.fallback : this.props.children; }
+}
+
+const initialFiles = {
+ 'app.py': `from flask import Flask, request, jsonify\nfrom analyzer import analyze_data\nfrom utils import generate_report\n\napp = Flask(__name__)\n\n@app.route('/scan', methods=['POST'])\ndef scan():\n    data = request.get_json()\n    if not data:\n        return jsonify({"error": "No data provided"}), 400\n\n    result = analyze_data(data)\n    report = generate_report(result)\n    return jsonify({"status": "success", "report": report})\n\nif __name__ == '__main__':\n    app.run(host='0.0.0.0', port=5000, debug=False)`,
+ 'analyzer.py': `import re\n\ndef analyze_data(payload):\n    findings = []\n    source = str(payload)\n    patterns = {\n        "Possible SQL injection": r"(union\\s+select|or\\s+1=1)",\n        "Possible script injection": r"<script|javascript:",\n    }\n    for label, pattern in patterns.items():\n        if re.search(pattern, source, re.I):\n            findings.append({"severity": "high", "issue": label})\n    return {"findings": findings, "scanned": True}`, 
+ 'utils.py': `from datetime import datetime\n\ndef generate_report(result):\n    return {\n        "generated_at": datetime.utcnow().isoformat() + "Z",\n        "findings": result.get("findings", []),\n        "summary": "Scan complete"\n    }`,
+ 'README.md': `# CYBER-AGENT AI\n\nReact-based cyber security dashboard demo.\n\nRun npm install, then npm run dev.`,
+ 'requirements.txt': `flask>=3.0\n`,
+ 'package.json': `{"name":"cyber-agent-ai","version":"1.0.0","scripts":{"dev":"vite --host 0.0.0.0"}}`
+};
+const starterMessages = [
+ {role:'assistant', text:'Hello. I’m your Cyber Agent AI. I can help with code analysis, vulnerability detection, and security reports. What would you like to investigate today?'}
+];
+function App(){
+ const [files,setFiles]=useState(initialFiles), [activeFile,setActiveFile]=useState('app.py');
+ const [messages,setMessages]=useState(starterMessages), [draft,setDraft]=useState('');
+ const [networkOnline,setNetworkOnline]=useState(typeof navigator==='undefined'?false:navigator.onLine); const [fbxAvailable,setFbxAvailable]=useState(false); const [speaking,setSpeaking]=useState(false), [voice,setVoice]=useState(false); const [modelError,setModelError]=useState(false); const online=networkOnline;
+ const [terminal,setTerminal]=useState(['PS C:\\cyber-agent-ai> npm run dev','> cyber-agent-ai@1.0.0 dev','> vite --host 0.0.0.0','','  VITE v5.4.0  ready in 428ms','  ➜  Local:   http://localhost:5173/','  ➜  Network: http://192.168.1.5:5173/','  ➜  press h + enter to show help']);
+ const [termInput,setTermInput]=useState(''); const [runState,setRunState]=useState('Ready'); const [muted,setMuted]=useState(false);
+ const chatEnd=useRef(null), fileInput=useRef(null), speechRef=useRef(null), mouthTimer=useRef(null);
+ useEffect(()=>{const update=()=>setNetworkOnline(navigator.onLine); window.addEventListener('online',update); window.addEventListener('offline',update); fetch('/models/cyber-agent.fbx',{method:'HEAD'}).then(r=>setFbxAvailable(r.ok)).catch(()=>setFbxAvailable(false)); return ()=>{window.removeEventListener('online',update);window.removeEventListener('offline',update)}},[]);
+ const toggleVoice=()=>{if(voice){window.speechSynthesis?.cancel();setSpeaking(false);setVoice(false)}else setVoice(true)};
+ useEffect(()=>{chatEnd.current?.scrollIntoView({behavior:'smooth',block:'end'});},[messages]);
+ useEffect(()=>()=>{window.speechSynthesis?.cancel(); clearInterval(mouthTimer.current)},[]);
+ const speak=(text)=>{if(!voice||muted||!('speechSynthesis' in window))return; window.speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(text);u.rate=.96;u.pitch=.9;u.onstart=()=>setSpeaking(true);u.onend=()=>setSpeaking(false);u.onerror=()=>setSpeaking(false);speechRef.current=u;window.speechSynthesis.speak(u)};
+ const answerFor=(q)=>{const s=q.toLowerCase(); if(s.includes('scan')||s.includes('vulnerab')||s.includes('security'))return 'Demo scan finished. I found two areas to review: validate and normalize untrusted input at the API boundary, and use parameterized database queries instead of string concatenation. This is a UI demonstration, not a real scan of your machine.'; if(s.includes('report'))return 'Your demonstration report is ready. It includes scan status, two example findings, recommended mitigations, and a timestamp. Use Generate Report to export it as a text file.'; if(s.includes('hello')||s.includes('hi'))return 'Hello! I’m online and ready to help. Choose a file in the Explorer or ask me to explain a security concept.'; return `I received: “${q}”. I can explain the selected code, outline secure coding fixes, or produce a demonstration security report. For live analysis of your project, connect a trusted backend/API.`};
+ const send=()=>{const q=draft.trim();if(!q)return;setMessages(m=>[...m,{role:'user',text:q}]);setDraft('');setRunState('Analyzing');setTimeout(()=>{const a=answerFor(q);setMessages(m=>[...m,{role:'assistant',text:a}]);speak(a);setRunState('Ready')},450)};
+ const runCode=()=>{setRunState('Running');setTerminal(t=>[...t,`PS C:\\cyber-agent-ai> python ${activeFile}`,`[demo] Running ${activeFile} in preview mode...`,`[demo] Syntax preview complete. No real system command was executed.`,'']);setTimeout(()=>setRunState('Ready'),350)};
+ const executeTerminal=()=>{const q=termInput.trim();if(!q)return;setTerminal(t=>[...t,`PS C:\\cyber-agent-ai> ${q}`,q==='clear'?'':q==='help'?'Available demo commands: help, npm run dev, python app.py, clear':q==='npm run dev'?'VITE v5.4.0 ready — http://localhost:5173/':q==='python app.py'?'[demo] Flask app preview started on port 5000.':'[demo] Terminal is simulated; command was not executed by the host.','']);setTermInput('')};
+ const importFile=(e)=>{const f=e.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=()=>{setFiles(prev=>({...prev,[f.name]:String(r.result??'')}));setActiveFile(f.name);setTerminal(t=>[...t,`[file] Imported ${f.name} (${f.size} bytes)`])};r.readAsText(f);e.target.value=''};
+ const saveFile=()=>{const blob=new Blob([files[activeFile]??''],{type:'text/plain'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=activeFile;a.click();URL.revokeObjectURL(url)};
+ const generateReport=()=>{const report=`CYBER-AGENT AI — DEMONSTRATION SECURITY REPORT\nGenerated: ${new Date().toISOString()}\n\nStatus: Demo completed\nFinding 1: Validate and normalize untrusted input.\nFinding 2: Use parameterized queries for database access.\n\nNote: These are illustrative recommendations, not results from a real security scan.`;const blob=new Blob([report],{type:'text/plain'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='cyber-agent-report.txt';a.click();URL.revokeObjectURL(url);setMessages(m=>[...m,{role:'assistant',text:'Report generated and downloaded. It is clearly marked as a demonstration report; no real system scan was performed.'}]);};
+ const lines=(files[activeFile]||'').split('\n');
+ return <div className="app-shell"><header className="topbar"><div className="brand"><div className="brand-icon"><ShieldCheck/></div><div><b>CYBER-AGENT AI</b><small>ANALYZE · DETECT · PROTECT</small></div></div><div className="top-status">{online&&<><span className="online-dot"/><span>ONLINE</span><i/></>}<span className="date">{new Date().toLocaleDateString()}</span><span className="clock">{new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span><button className="icon-btn" title="Refresh connection status" onClick={()=>setNetworkOnline(navigator.onLine)}><Wifi size={17}/></button><button className="icon-btn" title="Settings"><Settings size={17}/></button></div></header>
+ <main className="dashboard"><section className="status-row"><div className="status-card cyan"><CheckCircle2/><div><b>Task Completed</b><span>Report Generated Successfully!</span></div></div><div className="status-card violet"><CheckCircle2/><div><b>AI Process Complete</b><span>All Tasks Finished!</span></div></div></section>
+ <section className="workspace"><div className="left-column"><section className="panel editor-panel"><div className="panel-tabs"><div className="tab active"><Code2 size={15}/> Code Editor</div><div className="tab"><TerminalIcon size={15}/> Editor Preview</div><div className="panel-tools"><button title="Import file" onClick={()=>fileInput.current?.click()}><FileUp size={15}/></button><button title="Save file" onClick={saveFile}><Download size={15}/></button><button title="Run preview" onClick={runCode}><Play size={15}/></button></div></div><div className="editor-body"><aside className="explorer"><div className="explorer-title"><span>EXPLORER</span><FolderOpen size={14}/></div><div className="tree-root"><ChevronDown size={13}/> cyber-agent-ai</div><div className="tree-indent"><div className="tree-root"><ChevronDown size={13}/> src</div>{Object.keys(files).map(name=><button key={name} className={'file-item '+(activeFile===name?'selected':'')} onClick={()=>setActiveFile(name)}><FileCode2 size={13}/><span>{name}</span></button>)}<button className="file-item import-file" onClick={()=>fileInput.current?.click()}><Paperclip size={13}/> Import file…</button></div><input ref={fileInput} type="file" hidden accept=".js,.jsx,.ts,.tsx,.py,.json,.md,.txt,.css,.html,.yml,.yaml,.sh" onChange={importFile}/></aside><div className="code-area"><div className="file-tab"><FileCode2 size={13}/>{activeFile}<button onClick={()=>setActiveFile('app.py')} title="Reset active file"><X size={12}/></button><span className="spacer"/><button onClick={saveFile}>Save</button></div><div className="code-scroll"><pre className="line-numbers">{lines.map((_,i)=><span key={i}>{i+1}</span>)}</pre><textarea spellCheck="false" aria-label="Code editor" value={files[activeFile]??''} onChange={e=>setFiles(f=>({...f,[activeFile]:e.target.value}))}/></div><div className="editor-footer"><span><span className="online-dot"/> {runState}</span><span>Ln 1, Col 1&nbsp;&nbsp; Spaces: 4&nbsp;&nbsp; {activeFile.endsWith('.py')?'Python':'Text'}</span></div></div></div></section>
+ <section className="panel terminal-panel"><div className="terminal-head"><div className="terminal-tab active"><TerminalIcon size={14}/> Terminal</div><span>Problems</span><span>Output</span><span>Debug Console</span><span className="spacer"/><button onClick={()=>setTerminal([])} title="Clear terminal">Clear</button><button onClick={()=>setTerminal(t=>[...t,'PS C:\\cyber-agent-ai> npm run dev','VITE ready — http://localhost:5173/'])} title="Restart demo"><RefreshCw size={14}/></button></div><div className="terminal-output">{terminal.map((l,i)=><div key={i} className={l.includes('VITE')||l.includes('Local:')?'term-green':l.includes('[demo]')?'term-muted':''}>{l||' '}</div>)}<form className="terminal-input" onSubmit={e=>{e.preventDefault();executeTerminal()}}><span>PS C:\cyber-agent-ai&gt;</span><input value={termInput} onChange={e=>setTermInput(e.target.value)} placeholder="type help and press Enter" aria-label="Terminal command"/></form></div></section></div>
+ <div className="right-column"><section className="panel assistant-panel"><div className="assistant-head"><div><Activity size={16}/><b>AI Assistant</b>{online&&<span className="online-pill"><span className="online-dot"/> Online</span>}</div><div className="assistant-controls"><button className="live-avatar-btn" onClick={toggleVoice}>{voice?'Disable Voice':'Enable Voice'}</button><button className="clear-btn" onClick={()=>setMessages([])}>Clear Chat</button></div></div><div className="assistant-main"><div className={'robot-frame live-frame '+(speaking?'speaking':'')}><AvatarErrorBoundary fallback={<div className="avatar-fallback"><img src={robot} alt="Cyber-Agent AI robot preview"/><div className="avatar-placeholder"><b>3D MODEL NOT LOADED</b><span>Put your FBX at public/models/cyber-agent.fbx and reload.</span></div></div>}><Canvas camera={{position:[0,0,3.4],fov:38}} dpr={[1,1.5]} gl={{antialias:true,alpha:false}}><color attach="background" args={['#041329']}/><ambientLight intensity={0.8}/><directionalLight position={[2,3,4]} intensity={2.1}/><pointLight position={[-2,1,1]} intensity={1.2} color="#22dfff"/><Suspense fallback={null}><Bounds fit clip observe margin={1.2}><FBXAvatar speaking={speaking}/></Bounds><ContactShadows position={[0,-1.1,0]} opacity={0.35} scale={3} blur={2}/></Suspense><OrbitControls enablePan={false} minDistance={1.6} maxDistance={5} target={[0,0,0]}/></Canvas></AvatarErrorBoundary><div className="robot-scanline"/><div className="robot-caption"><span className="pulse-ring"/>{speaking?'SPEAKING':fbxAvailable?'LOCAL 3D AVATAR':'MODEL FILE REQUIRED'}</div></div><div className="chat-side"><div className="chat-messages">{messages.map((m,i)=><div key={i} className={'message-row '+m.role}><div className="message-avatar">{m.role==='assistant'?<ShieldCheck size={15}/>:<span>YOU</span>}</div><div className="bubble"><p>{m.text}</p><small>{m.role==='assistant'?'CYBER AGENT':'YOU'} · {new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</small></div></div>)}{runState==='Analyzing'&&<div className="typing"><span/><span/><span/> Analyzing request…</div>}<div ref={chatEnd}/></div><form className="chat-compose" onSubmit={e=>{e.preventDefault();send()}}><input value={draft} onChange={e=>setDraft(e.target.value)} placeholder={online?'Ask about code or security…':'Offline mode: ask about code or security…'} aria-label="Message the assistant"/><button disabled={!draft.trim()} title="Send message"><Send size={17}/></button></form></div></div>{!fbxAvailable&&<div className="api-error" role="status">3D model file not found. Add your FBX file to <code>public/models/cyber-agent.fbx</code>. The rest of the dashboard still works offline.</div>}<div className="assistant-actions"><button className="primary-btn" onClick={generateReport}><Activity size={15}/> Generate Report</button><button className="file-picker-btn" onClick={()=>fileInput.current?.click()}><FolderOpen size={15}/> Select File <span>{activeFile}</span></button></div></section>
+ <section className="panel git-panel"><div className="git-head"><div><GitBranch size={17}/><b>Git Branches &amp; Commits</b></div><button className="branch-select" onClick={()=>setMessages(m=>[...m,{role:'assistant',text:'Branch view: main, feature-login, and bugfix-issue-42 are illustrative branches in this dashboard.'}])}>main <ChevronDown size={14}/></button></div><div className="git-graph"><svg viewBox="0 0 680 170" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Git branches and commits"><defs><linearGradient id="grad" x1="0" x2="1"><stop offset="0" stopColor="#00f5df"/><stop offset="1" stopColor="#c44cff"/></linearGradient></defs><path d="M25 28 H650 M25 28 V68 H100 V112 H150 V145 H350 Q380 145 405 112 L465 68 H650" fill="none" stroke="url(#grad)" strokeWidth="2"/><path d="M100 68 H260 Q290 68 315 68 H650" fill="none" stroke="#17c8ff" strokeWidth="2"/><path d="M150 112 H430 Q450 112 465 68" fill="none" stroke="#a44dff" strokeWidth="2"/><g fill="#1ce9e2" stroke="#0c293f" strokeWidth="2">{[[25,28],[25,68],[100,68],[100,112],[150,112]].map(([x,y],i)=><circle key={i} cx={x} cy={y} r="5"/>)}</g><g fill="#27bfff" stroke="#12203e" strokeWidth="2">{[[180,68],[260,68],[315,68],[350,145]].map(([x,y],i)=><circle key={i} cx={x} cy={y} r="5"/>)}</g><g fill="#c05aff" stroke="#261744" strokeWidth="2">{[[150,145],[210,145],[275,145],[405,112],[465,68],[530,68],[600,68],[650,68]].map(([x,y],i)=><circle key={i} cx={x} cy={y} r="5"/>)}</g></svg><div className="branch-label main-label">main</div><div className="branch-label feature-label">feature-login</div><div className="branch-label bug-label">bugfix-issue-42</div><div className="hash hash-one">a3d4f21 <small>Initial commit</small></div><div className="hash hash-two">c911656 <small>Add login feature</small></div><div className="hash hash-three">e7f3a2b <small>Fix issue #42</small></div></div></section></div></section></main></div>
+}
+
+createRoot(document.getElementById('root')).render(<App/>);

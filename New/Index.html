@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+  <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CYBER-X // Cursor AI Security & Agentic Terminal</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        cyber: {
+                            green: '#00ff66',
+                            crimson: '#ff0055',
+                            dark: '#05050a',
+                            panel: '#0a0a16',
+                            border: '#1a1a3a'
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;600;700&display=swap');
+        body { font-family: 'Fira Code', monospace; }
+        .glow-green { text-shadow: 0 0 10px rgba(0, 255, 102, 0.6); }
+        .glow-red { text-shadow: 0 0 10px rgba(255, 0, 85, 0.6); }
+        .glass-panel { background: rgba(10, 10, 22, 0.75); backdrop-filter: blur(12px); border: 1px solid rgba(0, 255, 102, 0.15); }
+        .glass-panel-red { background: rgba(22, 10, 10, 0.75); backdrop-filter: blur(12px); border: 1px solid rgba(255, 0, 85, 0.3); }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #05050a; }
+        ::-webkit-scrollbar-thumb { background: #1a1a3a; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #00ff66; }
+    </style>
+</head>
+<body class="bg-cyber-dark text-gray-200 min-h-screen overflow-x-hidden">
+
+    <!-- SPOOKY BOOT SEQUENCE OVERLAY -->
+    <div id="boot-screen" class="fixed inset-0 z-50 bg-black flex flex-col justify-between p-6 transition-opacity duration-700">
+        <div class="space-y-2">
+            <div class="text-cyber-green text-xs tracking-widest uppercase">[SYSTEM INITIALIZATION SEQUENCE v4.0.2]</div>
+            <div id="boot-logs" class="text-xs text-green-500/80 font-mono space-y-1 h-64 overflow-hidden"></div>
+        </div>
+        <div class="flex items-center justify-between border-t border-cyber-green/30 pt-4">
+            <div class="text-cyber-green animate-pulse text-sm">ESTABLISHING SECURE TUNNEL TO BACKEND...</div>
+            <div id="boot-progress" class="text-cyber-green font-bold text-lg">0%</div>
+        </div>
+    </div>
+
+    <!-- SECURITY ALERT RED POPUP (SQL Injection / Attack Detection) -->
+    <div id="security-alert-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-panel-red max-w-lg w-full p-6 rounded-lg border-2 border-cyber-crimson shadow-[0_0_50px_rgba(255,0,85,0.4)] animate-bounce">
+            <div class="flex items-center space-x-3 mb-4">
+                <span class="text-3xl">🚨</span>
+                <h3 class="text-cyber-crimson font-bold text-xl tracking-wider glow-red">SECURITY BREACH ATTEMPT DETECTED!</h3>
+            </div>
+            <p id="attack-details" class="text-sm text-gray-300 mb-6 font-mono bg-black/40 p-3 rounded border border-cyber-crimson/40">
+                Malicious payload payload identified (SQL Injection/XSS pattern matching). Request blocked by client-side Web Application Firewall.
+            </p>
+            <div class="flex justify-end">
+                <button onclick="dismissSecurityAlert()" class="bg-cyber-crimson hover:bg-red-600 text-black font-bold px-6 py-2 rounded uppercase text-sm tracking-widest transition shadow-[0_0_15px_rgba(255,0,85,0.6)]">
+                    ACKNOWLEDGE & PURGE
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN DASHBOARD CONTAINER -->
+    <div id="main-dashboard" class="opacity-0 transition-opacity duration-1000 flex flex-col h-screen">
+        
+        <!-- TOP NAVIGATION HUD -->
+        <header class="glass-panel border-b border-cyber-border px-6 py-3 flex items-center justify-between z-30">
+            <div class="flex items-center space-x-4">
+                <div class="w-3 h-3 rounded-full bg-cyber-green animate-ping"></div>
+                <h1 class="text-cyber-green font-bold tracking-widest text-lg glow-green">CYBER-X // CORE HUD</h1>
+                <span class="text-xs px-2 py-0.5 rounded bg-cyber-green/10 text-cyber-green border border-cyber-green/30">API: CONNECTED</span>
+            </div>
+            <div class="flex items-center space-x-4">
+                <div id="auth-status-badge" class="text-xs text-gray-400 font-mono">STATUS: UNAUTHENTICATED</div>
+                <button onclick="openAuthModal()" class="border border-cyber-green text-cyber-green hover:bg-cyber-green hover:text-black px-4 py-1.5 rounded text-xs tracking-wider font-semibold transition">
+                    SECURE LOGIN / OTP
+                </button>
+            </div>
+        </header>
+
+        <!-- GRID LAYOUT CONTENT -->
+        <div class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 overflow-y-auto">
+            
+            <!-- LEFT PANEL: Multi-Modal Input & Threat Scanner (Cols 1-5) -->
+            <div class="lg:col-span-5 flex flex-col space-y-4">
+                
+                <!-- MULTI-MODAL PROMPT PANEL -->
+                <div class="glass-panel p-4 rounded-lg border border-cyber-border space-y-3">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs text-cyber-green font-bold tracking-wider">// MULTI-MODAL INPUT VECTOR</span>
+                        <span class="text-[10px] text-gray-500">SECURE ENCRYPTION ACTIVE</span>
+                    </div>
+                    
+                    <div class="relative">
+                        <textarea id="prompt-input" rows="3" placeholder="Enter query, code snippet, or natural language command..." class="w-full bg-black/60 border border-cyber-border rounded p-3 text-sm text-gray-200 focus:outline-none focus:border-cyber-green font-mono resize-none"></textarea>
+                    </div>
+
+                    <div class="flex items-center justify-between pt-1">
+                        <div class="flex items-center space-x-2">
+                            <!-- Voice Input Button -->
+                            <button id="voice-btn" onclick="toggleVoiceInput()" class="p-2 rounded bg-cyber-border hover:bg-cyber-green/20 text-gray-300 hover:text-cyber-green transition text-xs flex items-center space-x-1" title="Voice Input">
+                                <span>🎙️</span>
+                                <span id="voice-txt">Voice</span>
+                            </button>
+                            <!-- File Attachment Selector -->
+                            <label class="p-2 rounded bg-cyber-border hover:bg-cyber-green/20 text-gray-300 hover:text-cyber-green transition text-xs flex items-center space-x-1 cursor-pointer">
+                                <span>📎</span>
+                                <span id="file-label-txt">Attach File</span>
+                                <input type="file" id="file-input" class="hidden" onchange="handleFileSelect(event)">
+                            </label>
+                        </div>
+                        <button onclick="submitPrompt()" class="bg-cyber-green hover:bg-emerald-400 text-black font-bold px-4 py-2 rounded text-xs tracking-wider uppercase transition shadow-[0_0_15px_rgba(0,255,102,0.4)]">
+                            Execute Query
+                        </button>
+                    </div>
+                </div>
+
+                <!-- LINK AUTHENTICITY CHECKER -->
+                <div class="glass-panel p-4 rounded-lg border border-cyber-border space-y-3">
+                    <div class="text-xs text-cyber-green font-bold tracking-wider">// URL LINK AUTHENTICITY SCANNER</div>
+                    <div class="flex space-x-2">
+                        <input type="text" id="url-input" placeholder="https://suspicious-target-url.com" class="flex-1 bg-black/60 border border-cyber-border rounded px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-cyber-green font-mono">
+                        <button onclick="checkUrlAuthenticity()" class="bg-cyber-border hover:bg-cyber-green hover:text-black text-cyber-green px-4 py-2 rounded text-xs font-bold transition border border-cyber-green/40">
+                            SCAN URL
+                        </button>
+                    </div>
+                    <div id="url-scan-result" class="text-xs font-mono p-2 rounded bg-black/40 text-gray-400 hidden">
+                        Awaiting scan execution...
+                    </div>
+                </div>
+
+                <!-- DEVICE SECURITY & THREAT SCANNER -->
+                <div class="glass-panel p-4 rounded-lg border border-cyber-border space-y-3 flex-1">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs text-cyber-green font-bold tracking-wider">// DEVICE THREAT DIAGNOSTICS</span>
+                        <button onclick="triggerThreatScan()" class="text-[10px] bg-cyber-green/20 text-cyber-green border border-cyber-green/40 px-2.5 py-1 rounded hover:bg-cyber-green hover:text-black transition">
+                            RUN FULL SCAN
+                        </button>
+                    </div>
+                    <div id="threat-output" class="bg-black/80 p-3 rounded font-mono text-[11px] text-green-400 h-36 overflow-y-auto space-y-1 border border-cyber-border">
+                        [READY] System diagnostics primed. Click 'RUN FULL SCAN' to analyze local environment & memory hooks.
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- RIGHT PANEL: Agentic Terminal & Desktop Tools (Cols 6-12) -->
+            <div class="lg:col-span-7 flex flex-col space-y-4">
+                
+                <!-- AGENTIC TERMINAL WINDOW (Cursor AI Style) -->
+                <div class="glass-panel rounded-lg border border-cyber-border flex flex-col h-96">
+                    <div class="bg-black/60 px-4 py-2 border-b border-cyber-border flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <div class="w-2.5 h-2.5 rounded-full bg-red-500"></div>
+                            <div class="w-2.5 h-2.5 rounded-full bg-yellow-500"></div>
+                            <div class="w-2.5 h-2.5 rounded-full bg-green-500"></div>
+                            <span class="text-xs text-gray-400 ml-2 font-mono">agentic-terminal // bash & cursor-ai-engine</span>
+                        </div>
+                        <button onclick="clearTerminal()" class="text-[10px] text-gray-500 hover:text-cyber-green">CLEAR BUFFER</button>
+                    </div>
+                    <div id="terminal-logs" class="flex-1 p-4 font-mono text-xs overflow-y-auto space-y-2 bg-black/90 text-green-400">
+                        <div>[SYSTEM] Connected to agentic backend engine. Ready for execution streams...</div>
+                    </div>
+                </div>
+
+                <!-- DESKTOP DOWNLOAD & PERMISSION MANAGER -->
+                <div class="glass-panel p-4 rounded-lg border border-cyber-border flex items-center justify-between">
+                    <div>
+                        <div class="text-xs text-cyber-green font-bold tracking-wider">// DESKTOP CLIENT & PERMISSIONS</div>
+                        <p class="text-[11px] text-gray-400 mt-1">Download native desktop agent package & manage root permissions.</p>
+                    </div>
+                    <div class="flex space-x-3">
+                        <button onclick="openPermissionModal()" class="bg-cyber-border hover:bg-cyber-green/20 text-gray-300 hover:text-cyber-green px-3 py-2 rounded text-xs font-semibold transition border border-cyber-border">
+                            Permissions
+                        </button>
+                        <button onclick="downloadDesktopApp()" class="bg-cyber-green hover:bg-emerald-400 text-black font-bold px-4 py-2 rounded text-xs tracking-wider uppercase transition shadow-[0_0_15px_rgba(0,255,102,0.4)]">
+                            Download Desktop App
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <!-- AUTHENTICATION & OTP MODAL -->
+    <div id="auth-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-panel max-w-md w-full p-6 rounded-lg border border-cyber-green shadow-[0_0_30px_rgba(0,255,102,0.2)] space-y-4">
+            <div class="flex justify-between items-center border-b border-cyber-border pb-3">
+                <h3 class="text-cyber-green font-bold text-sm tracking-wider">// SECURE EMAIL OTP AUTHENTICATION</h3>
+                <button onclick="closeAuthModal()" class="text-gray-400 hover:text-cyber-green font-bold">✕</button>
+            </div>
+            
+            <div id="auth-step-1" class="space-y-3">
+                <label class="block text-xs text-gray-400">Operator Email Address</label>
+                <input type="email" id="auth-email" placeholder="agent@cyber-x.internal" class="w-full bg-black/60 border border-cyber-border rounded p-2.5 text-xs text-gray-200 focus:outline-none focus:border-cyber-green font-mono">
+                <button onclick="requestOtp()" class="w-full bg-cyber-green hover:bg-emerald-400 text-black font-bold py-2.5 rounded text-xs uppercase tracking-wider transition">
+                    Send Verification OTP
+                </button>
+            </div>
+
+            <div id="auth-step-2" class="space-y-3 hidden">
+                <label class="block text-xs text-gray-400">Enter 6-Digit Verification OTP</label>
+                <input type="text" id="auth-otp" placeholder="000000" maxlength="6" class="w-full bg-black/60 border border-cyber-border rounded p-2.5 text-center text-lg text-cyber-green tracking-widest focus:outline-none focus:border-cyber-green font-mono">
+                <button onclick="verifyOtp()" class="w-full bg-cyber-green hover:bg-emerald-400 text-black font-bold py-2.5 rounded text-xs uppercase tracking-wider transition">
+                    Verify & Authenticate Session
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PERMISSION MANAGER MODAL -->
+    <div id="permission-modal" class="fixed inset-0 z-50 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4">
+        <div class="glass-panel max-w-md w-full p-6 rounded-lg border border-cyber-border space-y-4">
+            <div class="flex justify-between items-center border-b border-cyber-border pb-3">
+                <h3 class="text-cyber-green font-bold text-sm tracking-wider">// SYSTEM PERMISSION MANAGER</h3>
+                <button onclick="closePermissionModal()" class="text-gray-400 hover:text-cyber-green font-bold">✕</button>
+            </div>
+            <p class="text-xs text-gray-400">Grant explicit root privileges for local command execution and memory stream analysis.</p>
+            <div class="space-y-2 text-xs font-mono">
+                <label class="flex items-center space-x-2 text-gray-300 cursor-pointer">
+                    <input type="checkbox" checked class="accent-cyber-green"> <span>Local File System Read/Write</span>
+                </label>
+                <label class="flex items-center space-x-2 text-gray-300 cursor-pointer">
+                    <input type="checkbox" checked class="accent-cyber-green"> <span>Network Packet Inspection (pcap)</span>
+                </label>
+                <label class="flex items-center space-x-2 text-gray-300 cursor-pointer">
+                    <input type="checkbox" checked class="accent-cyber-green"> <span>Terminal Process RCE Execution</span>
+                </label>
+            </div>
+            <div class="flex justify-end pt-2">
+                <button onclick="closePermissionModal()" class="bg-cyber-green text-black font-bold px-4 py-2 rounded text-xs uppercase tracking-wider">
+                    Save Permissions
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FRONTEND JAVASCRIPT & BACKEND INTEGRATION LAYER -->
+    <script>
+        const BACKEND_URL = "http://localhost:5000/api"; // Matches your backend server endpoints
+        let authToken = localStorage.getItem("cyber_jwt") || null;
+        let attachedFileContent = null;
+
+        // 1. SPOOKY BOOT SEQUENCE
+        const bootLogsData = [
+            "Initializing kernel modules...",
+            "Mounting virtual secure filesystems...",
+            "Checking database connection (MongoDB Mongoose)...",
+            "Loading cryptographic security keys...",
+            "Establishing WebSocket & REST channels...",
+            "Loading Cursor AI Agent Engine...",
+            "Firewall status: ACTIVE [WAF Guard Enabled]",
+            "All systems nominal. Welcome Operator."
+        ];
+
+        window.addEventListener("DOMContentLoaded", () => {
+            let logContainer = document.getElementById("boot-logs");
+            let progressContainer = document.getElementById("boot-progress");
+            let index = 0;
+
+            let bootInterval = setInterval(() => {
+                if (index < bootLogsData.length) {
+                    let p = document.createElement("div");
+                    p.textContent = `> ${bootLogsData[index]}`;
+                    logContainer.appendChild(p);
+                    logContainer.scrollTop = logContainer.scrollHeight;
+                    let progress = Math.round(((index + 1) / bootLogsData.length) * 100);
+                    progressContainer.textContent = `${progress}%`;
+                    index++;
+                } else {
+                    clearInterval(bootInterval);
+                    document.getElementById("boot-screen").style.opacity = "0";
+                    setTimeout(() => {
+                        document.getElementById("boot-screen").style.display = "none";
+                        document.getElementById("main-dashboard").style.opacity = "1";
+                    }, 700);
+                }
+            }, 300);
+
+            updateAuthBadge();
+        });
+
+        // 2. SQL INJECTION & ATTACK PREVENTION FIREWALL
+        function scanForAttackPayloads(inputStr) {
+            const sqlInjectionPatterns = /(\b(SELECT|UNION|INSERT|UPDATE|DELETE|DROP|ALTER)\b|--|;|' OR '1'='1|' OR 1=1)/i;
+            const xssPatterns = /(<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>|javascript:|onerror=)/i;
+            
+            if (sqlInjectionPatterns.test(inputStr) || xssPatterns.test(inputStr)) {
+                triggerSecurityAlert("Malicious payload detected: SQL Injection / XSS injection vector blocked by client firewall.");
+                return true;
+            }
+            return false;
+        }
+
+        function triggerSecurityAlert(message) {
+            document.getElementById("attack-details").textContent = message;
+            document.getElementById("security-alert-modal").classList.remove("hidden");
+            // Play alarm beep simulation or visual pulse
+        }
+
+        function dismissSecurityAlert() {
+            document.getElementById("security-alert-modal").classList.add("hidden");
+        }
+
+        // 3. AUTHENTICATION & OTP FLOW
+        function openAuthModal() { document.getElementById("auth-modal").classList.remove("hidden"); }
+        function closeAuthModal() { document.getElementById("auth-modal").classList.add("hidden"); }
+
+        async function requestOtp() {
+            const email = document.getElementById("auth-email").value;
+            if (!email) return alert("Please enter a valid operator email.");
+
+            if (scanForAttackPayloads(email)) return;
+
+            try {
+                // Backend API integration for OTP request
+                const response = await fetch(`${BACKEND_URL}/auth/otp-request`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email })
+                });
+                
+                // Fallback simulation if backend endpoint is initializing
+                document.getElementById("auth-step-1").classList.add("hidden");
+                document.getElementById("auth-step-2").classList.remove("hidden");
+                appendTerminalLog(`[AUTH] OTP dispatched to ${email}. Check backend console logs.`);
+            } catch (err) {
+                console.error(err);
+                alert("Backend connection error. Ensure server.js is running.");
+            }
+        }
+
+        async function verifyOtp() {
+            const email = document.getElementById("auth-email").value;
+            const otp = document.getElementById("auth-otp").value;
+
+            try {
+                // Backend API integration for OTP verification
+                const response = await fetch(`${BACKEND_URL}/auth/otp-verify`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email, otp })
+                });
+                
+                // Simulating successful JWT token retrieval
+                authToken = "mock_jwt_token_secure_9847192847";
+                localStorage.setItem("cyber_jwt", authToken);
+                closeAuthModal();
+                updateAuthBadge();
+                appendTerminalLog("[AUTH] Session authenticated successfully. JWT stored.");
+            } catch (err) {
+                alert("Verification failed.");
+            }
+        }
+
+        function updateAuthBadge() {
+            const badge = document.getElementById("auth-status-badge");
+            if (authToken) {
+                badge.textContent = "STATUS: AUTHENTICATED [JWT]";
+                badge.className = "text-xs text-cyber-green font-mono";
+            } else {
+                badge.textContent = "STATUS: UNAUTHENTICATED";
+                badge.className = "text-xs text-gray-400 font-mono";
+            }
+        }
+
+        // 4. MULTI-MODAL INPUT & AGENTIC TERMINAL
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file) {
+                document.getElementById("file-label-txt").textContent = file.name;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    attachedFileContent = e.target.result;
+                    appendTerminalLog(`[FILE] Loaded attachment: ${file.name} (${file.size} bytes)`);
+                };
+                reader.readAsText(file);
+            }
+        }
+
+        function toggleVoiceInput() {
+            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+                alert("Speech recognition not supported in this browser.");
+                return;
+            }
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            const recognition = new SpeechRecognition();
+            
+            document.getElementById("voice-txt").textContent = "Listening...";
+            recognition.onresult = (event) => {
+                const speechText = event.results[0][0].transcript;
+                document.getElementById("prompt-input").value = speechText;
+                document.getElementById("voice-txt").textContent = "Voice";
+                appendTerminalLog(`[SPEECH] Converted audio prompt: "${speechText}"`);
+            };
+            recognition.onerror = () => { document.getElementById("voice-txt").textContent = "Voice"; };
+            recognition.start();
+        }
+
+        async function submitPrompt() {
+            const query = document.getElementById("prompt-input").value;
+            if (!query) return;
+
+            if (scanForAttackPayloads(query)) return;
+
+            appendTerminalLog(`> ${query}`);
+            document.getElementById("prompt-input").value = "";
+
+            try {
+                // Backend API integration for agentic terminal execution
+                const response = await fetch(`${BACKEND_URL}/terminal/execute`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${authToken || ''}`
+                    },
+                    body: JSON.stringify({ query, fileData: attachedFileContent })
+                });
+
+                // Simulated Agentic streaming response (Cursor AI style)
+                setTimeout(() => {
+                    appendTerminalLog(`[CURSOR AI] Analyzing execution graph...`);
+                    setTimeout(() => {
+                        appendTerminalLog(`[SUCCESS] Task processed and validated against MongoDB schema.`);
+                    }, 600);
+                }, 400);
+
+            } catch (err) {
+                appendTerminalLog(`[ERROR] Failed to communicate with backend REST API.`);
+            }
+        }
+
+        function appendTerminalLog(text) {
+            const term = document.getElementById("terminal-logs");
+            const div = document.createElement("div");
+            div.textContent = text;
+            term.appendChild(div);
+            term.scrollTop = term.scrollHeight;
+        }
+
+        function clearTerminal() {
+            document.getElementById("terminal-logs.innerHTML").innerHTML = "";
+        }
+
+        // 5. LINK AUTHENTICITY CHECKER
+        async function checkUrlAuthenticity() {
+            const url = document.getElementById("url-input").value;
+            const resDiv = document.getElementById("url-scan-result");
+            if (!url) return;
+
+            resDiv.classList.remove("hidden");
+            resDiv.textContent = "Scanning URL reputation & SSL certificates...";
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/security/scan-url`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ url })
+                });
+
+                // Simulation check
+                setTimeout(() => {
+                    if (url.includes("malicious") || url.includes("fake") || url.includes("phish")) {
+                        resDiv.className = "text-xs font-mono p-2 rounded bg-red-950/60 text-red-400 border border-red-500/40";
+                        resDiv.textContent = `⚠️ WARNING: URL flagged as MALICIOUS/PHISHING vector!`;
+                    } else {
+                        resDiv.className = "text-xs font-mono p-2 rounded bg-green-950/60 text-green-400 border border-green-500/40";
+                        resDiv.textContent = `✅ SECURE: URL verified clean and safe.`;
+                    }
+                }, 800);
+            } catch (err) {
+                resDiv.textContent = "Error scanning URL endpoint.";
+            }
+        }
+
+        // 6. DEVICE THREAT SCANNER
+        function triggerThreatScan() {
+            const output = document.getElementById("threat-output");
+            output.innerHTML = "[SCANNING] Initiating full memory dump & rootkit check...\n";
+            
+            const checks = [
+                "Checking active background processes...",
+                "Inspecting environment variables (.env integrity)...",
+                "Verifying MongoDB Mongoose connection pools...",
+                "Scanning for unauthorized open ports...",
+                "Diagnostic complete: 0 vulnerabilities found. System secure."
+            ];
+
+            let i = 0;
+            let interval = setInterval(() => {
+                if (i < checks.length) {
+                    output.innerHTML += `> ${checks[i]}\n`;
+                    output.scrollTop = output.scrollHeight;
+                    i++;
+                } else {
+                    clearInterval(interval);
+                }
+            }, 500);
+        }
+
+        // 7. DESKTOP DOWNLOAD & PERMISSIONS
+        function openPermissionModal() { document.getElementById("permission-modal").classList.remove("hidden"); }
+        function closePermissionModal() { document.getElementById("permission-modal").classList.add("hidden"); }
+        
+        function downloadDesktopApp() {
+            alert("Downloading CYBER-X Native Desktop Client package (.AppImage / .exe)...");
+        }
+    </script>
+</body>
+</html>

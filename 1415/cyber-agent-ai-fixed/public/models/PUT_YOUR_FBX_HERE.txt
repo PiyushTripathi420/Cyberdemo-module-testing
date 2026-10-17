@@ -1,0 +1,1 @@
+Copy your actual FBX model into this folder and rename it cyber-agent.fbx. The FBX file was not attached to the chat, so it must be added by you before the 3D avatar can display. Keep any required textures nearby using matching relative paths.
